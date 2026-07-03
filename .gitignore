@@ -40,3 +40,14 @@ bin/
 ### Others ###
 *.log
 *.log.*
+
+### Local Environment ###
+mise.toml
+.env
+.env.local
+.env.*.local
+
+### Maven ###
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
