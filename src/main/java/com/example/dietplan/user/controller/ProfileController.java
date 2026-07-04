@@ -1,5 +1,6 @@
 package com.example.dietplan.user.controller;
 
+import com.example.dietplan.common.context.CurrentUserContext;
 import com.example.dietplan.common.result.ApiResponse;
 import com.example.dietplan.user.dto.UserProfileRequest;
 import com.example.dietplan.user.dto.UserProfileResponse;
@@ -21,13 +22,12 @@ public class ProfileController {
 
     @GetMapping
     public ApiResponse<UserProfileResponse> getProfile() {
-        // 骨架阶段暂时写死用户 ID，后续从登录上下文提取。
-        return ApiResponse.success(profileService.getProfile(1L));
+        return ApiResponse.success(profileService.getProfile(CurrentUserContext.getUserId()));
     }
 
     @PutMapping
     public ApiResponse<Void> updateProfile(@Valid @RequestBody UserProfileRequest request) {
-        profileService.updateProfile(1L, request);
+        profileService.updateProfile(CurrentUserContext.getUserId(), request);
         return ApiResponse.success("更新成功", null);
     }
 }

@@ -6,6 +6,7 @@ import com.example.dietplan.auth.dto.CurrentUserResponse;
 import com.example.dietplan.auth.dto.LoginRequest;
 import com.example.dietplan.auth.dto.RegisterRequest;
 import com.example.dietplan.auth.service.AuthService;
+import com.example.dietplan.common.context.CurrentUserContext;
 import com.example.dietplan.common.exception.BusinessException;
 import com.example.dietplan.common.result.ResultCode;
 import com.example.dietplan.common.utils.JwtTokenUtil;
@@ -61,12 +62,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public CurrentUserResponse getCurrentUser() {
-        // 当前骨架阶段先返回占位结构，后续在 JWT 过滤器完成后改为读取登录上下文。
+        Long userId = CurrentUserContext.getUserId();
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户不存在");
+        }
         return CurrentUserResponse.builder()
-                .id(1L)
-                .username("demo")
-                .email("demo@example.com")
-                .nickname("演示用户")
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
                 .build();
     }
 }

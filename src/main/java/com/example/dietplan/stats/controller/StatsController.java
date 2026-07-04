@@ -1,5 +1,6 @@
 package com.example.dietplan.stats.controller;
 
+import com.example.dietplan.common.context.CurrentUserContext;
 import com.example.dietplan.common.result.ApiResponse;
 import com.example.dietplan.stats.dto.CheckinStatsResponse;
 import com.example.dietplan.stats.dto.TodayStatsResponse;
@@ -22,26 +23,26 @@ public class StatsController {
 
     @GetMapping("/today")
     public ApiResponse<TodayStatsResponse> today() {
-        return ApiResponse.success(statsService.getTodayStats(1L));
+        return ApiResponse.success(statsService.getTodayStats(CurrentUserContext.getUserId()));
     }
 
     @GetMapping("/weekly-calories")
     public ApiResponse<WeeklyCaloriesResponse> weeklyCalories() {
-        return ApiResponse.success(statsService.getWeeklyCalories(1L));
+        return ApiResponse.success(statsService.getWeeklyCalories(CurrentUserContext.getUserId()));
     }
 
     @GetMapping("/weekly-macros")
     public ApiResponse<WeeklyMacrosResponse> weeklyMacros() {
-        return ApiResponse.success(statsService.getWeeklyMacros(1L));
+        return ApiResponse.success(statsService.getWeeklyMacros(CurrentUserContext.getUserId()));
     }
 
     @GetMapping("/checkin")
     public ApiResponse<CheckinStatsResponse> checkin() {
-        return ApiResponse.success(statsService.getCheckinStats(1L));
+        return ApiResponse.success(statsService.getCheckinStats(CurrentUserContext.getUserId()));
     }
 
     @GetMapping("/weight-trend")
     public ApiResponse<List<WeightTrendPointResponse>> weightTrend() {
-        return ApiResponse.success(statsService.getWeightTrend(1L));
+        return ApiResponse.success(statsService.getWeightTrend(CurrentUserContext.getUserId()));
     }
 }

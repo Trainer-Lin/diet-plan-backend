@@ -80,6 +80,12 @@ public class ProfileServiceImpl implements ProfileService {
         if (profile.getHeight() == null || profile.getWeight() == null || profile.getAge() == null) {
             return 0;
         }
+        // 身高或体重为 0 时，说明用户尚未完善档案，直接返回 0，避免出现负数 TDEE
+        if (profile.getHeight().compareTo(BigDecimal.ZERO) <= 0
+                || profile.getWeight().compareTo(BigDecimal.ZERO) <= 0
+                || profile.getAge() <= 0) {
+            return 0;
+        }
 
         BigDecimal weightPart = profile.getWeight().multiply(BigDecimal.TEN);
         BigDecimal heightPart = profile.getHeight().multiply(new BigDecimal("6.25"));
@@ -87,7 +93,7 @@ public class ProfileServiceImpl implements ProfileService {
         BigDecimal base = weightPart.add(heightPart).subtract(agePart);
         base = "male".equalsIgnoreCase(profile.getGender()) ? base.add(new BigDecimal("5")) : base.subtract(new BigDecimal("161"));
 
-        BigDecimal multiplier = switch (profile.getActivityLevel()) {
+        BigDecimal multiplier = switch (profile.getActivityLevel() == null ? "moderate" : profile.getActivityLevel()) {
             case "sedentary" -> new BigDecimal("1.2");
             case "light" -> new BigDecimal("1.375");
             case "active" -> new BigDecimal("1.725");
@@ -95,6 +101,8 @@ public class ProfileServiceImpl implements ProfileService {
             default -> new BigDecimal("1.55");
         };
 
-        return base.multiply(multiplier).setScale(0, RoundingMode.HALF_UP).intValue();
+        int tdee = base.multiply(multiplier).setScale(0, RoundingMode.HALF_UP).intValue();
+        // 兜底：任何异常情况下 TDEE 不应小于 0
+        return Math.max(tdee, 0);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.dietplan.food.controller;
 
+import com.example.dietplan.common.context.CurrentUserContext;
 import com.example.dietplan.common.result.ApiResponse;
 import com.example.dietplan.food.dto.CustomFoodCreateRequest;
 import com.example.dietplan.food.dto.FoodResponse;
@@ -33,7 +34,7 @@ public class FoodController {
 
     @PostMapping("/custom")
     public ApiResponse<Void> createCustomFood(@Valid @RequestBody CustomFoodCreateRequest request) {
-        foodService.createCustomFood(1L, request);
+        foodService.createCustomFood(CurrentUserContext.getUserId(), request);
         return ApiResponse.success("新增成功", null);
     }
 }

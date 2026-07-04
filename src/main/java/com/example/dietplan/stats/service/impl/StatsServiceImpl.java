@@ -1,5 +1,7 @@
 package com.example.dietplan.stats.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.dietplan.record.entity.WeightRecord;
 import com.example.dietplan.record.mapper.WeightRecordMapper;
 import com.example.dietplan.stats.dto.CheckinStatsResponse;
 import com.example.dietplan.stats.dto.TodayStatsResponse;
@@ -68,8 +70,10 @@ public class StatsServiceImpl implements StatsService {
 
     @Override
     public List<WeightTrendPointResponse> getWeightTrend(Long userId) {
-        // 后续可改为按用户最近 7-30 次体重记录进行聚合。
-        return weightRecordMapper.selectList(null).stream()
+        return weightRecordMapper.selectList(new LambdaQueryWrapper<WeightRecord>()
+                        .eq(WeightRecord::getUserId, userId)
+                        .orderByAsc(WeightRecord::getRecordDate))
+                .stream()
                 .map(record -> WeightTrendPointResponse.builder()
                         .day(record.getRecordDate().toString())
                         .value(record.getWeight())
