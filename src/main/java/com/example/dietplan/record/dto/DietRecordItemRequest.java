@@ -1,13 +1,13 @@
 package com.example.dietplan.record.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class DietRecordItemRequest {
-    @NotNull(message = "食物 ID 不能为空")
     private Long foodId;
 
     @NotBlank(message = "食物名称不能为空")

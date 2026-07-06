@@ -45,7 +45,7 @@ public class FoodServiceImpl implements FoodService {
     }
 
     @Override
-    public void createCustomFood(Long userId, CustomFoodCreateRequest request) {
+    public FoodResponse createCustomFood(Long userId, CustomFoodCreateRequest request) {
         Food food = new Food();
         food.setName(request.getName());
         food.setCategory(request.getCategory());
@@ -59,6 +59,8 @@ public class FoodServiceImpl implements FoodService {
         food.setCreatedBy(userId);
         food.setCreatedAt(LocalDateTime.now());
         foodMapper.insert(food);
+
+        return toResponse(food);
     }
 
     private FoodResponse toResponse(Food food) {

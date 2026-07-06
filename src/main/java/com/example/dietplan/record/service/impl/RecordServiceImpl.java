@@ -8,6 +8,7 @@ import com.example.dietplan.record.entity.DietRecord;
 import com.example.dietplan.record.entity.DietRecordItem;
 import com.example.dietplan.record.mapper.DietRecordItemMapper;
 import com.example.dietplan.record.mapper.DietRecordMapper;
+import java.util.ArrayList;
 import com.example.dietplan.record.service.RecordService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -68,7 +69,14 @@ public class RecordServiceImpl implements RecordService {
 
     @Override
     public void deleteRecordItem(Long itemId) {
+        DietRecordItem item = dietRecordItemMapper.selectById(itemId);
+        if (item == null) {
+            return;
+        }
+
+        Long recordId = item.getRecordId();
         dietRecordItemMapper.deleteById(itemId);
+        refreshRecordCalories(recordId);
     }
 
     private List<DietRecordItemResponse> loadItems(Long recordId) {
@@ -82,5 +90,24 @@ public class RecordServiceImpl implements RecordService {
                         .calories(item.getCalories())
                         .build())
                 .toList();
+    }
+
+    private void refreshRecordCalories(Long recordId) {
+        DietRecord record = dietRecordMapper.selectById(recordId);
+        if (record == null) {
+            return;
+        }
+
+        List<DietRecordItem> items = new ArrayList<>(dietRecordItemMapper.selectList(
+                new LambdaQueryWrapper<DietRecordItem>().eq(DietRecordItem::getRecordId, recordId)
+        ));
+
+        if (items.isEmpty()) {
+            dietRecordMapper.deleteById(recordId);
+            return;
+        }
+
+        record.setTotalCalories(items.stream().mapToInt(DietRecordItem::getCalories).sum());
+        dietRecordMapper.updateById(record);
     }
 }

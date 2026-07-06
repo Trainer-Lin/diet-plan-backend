@@ -33,8 +33,7 @@ public class FoodController {
     }
 
     @PostMapping("/custom")
-    public ApiResponse<Void> createCustomFood(@Valid @RequestBody CustomFoodCreateRequest request) {
-        foodService.createCustomFood(CurrentUserContext.getUserId(), request);
-        return ApiResponse.success("新增成功", null);
+    public ApiResponse<FoodResponse> createCustomFood(@Valid @RequestBody CustomFoodCreateRequest request) {
+        return ApiResponse.success("新增成功", foodService.createCustomFood(CurrentUserContext.getUserId(), request));
     }
 }

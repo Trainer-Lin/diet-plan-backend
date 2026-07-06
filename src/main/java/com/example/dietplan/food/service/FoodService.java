@@ -9,5 +9,5 @@ public interface FoodService {
 
     List<FoodResponse> searchFoods(String keyword);
 
-    void createCustomFood(Long userId, CustomFoodCreateRequest request);
+    FoodResponse createCustomFood(Long userId, CustomFoodCreateRequest request);
 }
