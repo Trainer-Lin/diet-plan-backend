@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/api/ai/chat", // 允许未登录用户调用 AI 聊天接口（如需登录可删除此行）
+                                "/api/ai/**", // 放行所有 AI 接口
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"

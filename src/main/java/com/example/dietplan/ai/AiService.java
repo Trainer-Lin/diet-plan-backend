@@ -55,7 +55,7 @@ public class AiService {
 
         // 构建请求体，要求 AI 按 JSON 格式返回
         Map<String, Object> body = Map.of(
-                "model", "kimi-k2-5", // 指定使用的模型
+                "model", "kimi-k2.5", // 指定使用的模型
                 "messages", List.of(
                         // system 角色：设定 AI 的行为和人设，并规定输出格式
                         Map.of("role", "system", "content", "你是一个专业的营养师。请根据用户提供的健康指标，生成饮食建议。必须严格按 JSON 格式输出，不要包含任何其他说明文字。JSON 格式为：{\"brief\": \"精简建议，10字以内\", \"detailed\": \"详细建议，200-300字\"}"),
