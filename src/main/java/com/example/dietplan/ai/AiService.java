@@ -82,7 +82,7 @@ public class AiService {
         // 发送 POST 请求并获取响应
         // block() 表示同步等待结果（阻塞当前线程直到响应返回）
         Map<String, Object> response = webClient.post()
-                .uri("/v1/chat/completions") // Kimi API 的聊天接口路径
+                .uri("/chat/completions") // Kimi API 的聊天接口路径
                 .bodyValue(body) // 设置请求体
                 .retrieve() // 执行请求
                 .bodyToMono(Map.class) // 将响应体解析为 Map
