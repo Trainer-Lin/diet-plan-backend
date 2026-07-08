@@ -28,3 +28,8 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+moonshot:
+  api-key: sk-jLD7Fm0dzn7yKzXCcnlfABUHluDhYEdZoP7qheYpHUT04u3P
+  base-url: https://api.moonshot.cn/v1
+  model: kimi-k2.5
