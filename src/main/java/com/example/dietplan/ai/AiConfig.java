@@ -4,7 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
 
 /**
  * AI 模块的配置类
@@ -26,8 +30,13 @@ public class AiConfig {
             @Value("${moonshot.base-url}") String baseUrl, // @Value 从配置文件读取值
             @Value("${moonshot.api-key}") String apiKey) {
 
+        // 配置底层 HTTP 客户端超时：响应设置为 55 秒，比前端超时略短，确保后端能先返回兜底响应
+        HttpClient httpClient = HttpClient.create()
+                .responseTimeout(Duration.ofSeconds(55));
+
         return WebClient.builder()
                 .baseUrl(baseUrl) // 设置基础 URL，后续请求只需要写路径
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 // 添加 Authorization 请求头，Kimi API 用 Bearer 认证
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 // 设置 Content-Type 为 JSON

@@ -52,7 +52,7 @@ public class AiController {
      * @return 包含精简和详细建议的响应对象
      */
     @PostMapping("/advice") // 处理 POST 请求，路径为 /api/ai/advice
-    public ApiResponse<AiAdviceResponse> advice(@RequestBody AiAdviceRequest request) {
+    public ApiResponse<AiAdviceResponse> advice(@Valid @RequestBody AiAdviceRequest request) {
         // @RequestBody 将 JSON 请求体自动转换为 Java 对象
 
         // 调用服务层生成个性化健康建议

@@ -1,6 +1,8 @@
 package com.example.dietplan.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -11,11 +13,13 @@ import java.util.Map;
  * AI 服务层
  * 负责调用 Kimi API 并处理响应
  */
+@Slf4j
 @Service // 标记为服务层组件，会被 Spring 容器管理
 @RequiredArgsConstructor // Lombok 注解，自动生成构造函数（用于依赖注入）
 public class AiService {
 
     private final WebClient webClient; // 注入配置好的 WebClient
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 发送消息给 Kimi AI 并获取回复
@@ -38,7 +42,12 @@ public class AiService {
                 )
         );
 
-        return callKimi(body); // 调用 Kimi API 并返回回复内容
+        try {
+            return callKimi(body); // 调用 Kimi API 并返回回复内容
+        } catch (Exception e) {
+            log.error("调用 Kimi 聊天接口失败", e);
+            return "AI 服务暂时不可用，请稍后重试。";
+        }
     }
 
     /**
@@ -65,11 +74,15 @@ public class AiService {
                 "response_format", Map.of("type", "json_object") // 强制 AI 返回 JSON 格式
         );
 
-        // 调用 Kimi API，返回的是 JSON 字符串
-        String json = callKimi(body);
-
-        // 解析 JSON 字符串为 AiAdviceResponse 对象
-        return parseAdviceResponse(json);
+        try {
+            // 调用 Kimi API，返回的是 JSON 字符串
+            String json = callKimi(body);
+            // 解析 JSON 字符串为 AiAdviceResponse 对象
+            return parseAdviceResponse(json);
+        } catch (Exception e) {
+            log.error("调用 Kimi 建议接口失败", e);
+            return defaultAdviceResponse();
+        }
     }
 
     /**
@@ -147,14 +160,21 @@ public class AiService {
     private AiAdviceResponse parseAdviceResponse(String json) {
         try {
             // 使用 Jackson 的 ObjectMapper 解析 JSON
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.readValue(json, AiAdviceResponse.class);
+            return objectMapper.readValue(json, AiAdviceResponse.class);
         } catch (Exception e) {
+            log.warn("解析 AI 建议响应失败，返回默认建议：{}", json, e);
             // 如果解析失败，返回默认建议
-            AiAdviceResponse response = new AiAdviceResponse();
-            response.setBrief("保持规律饮食");
-            response.setDetailed("目前无法生成个性化建议，请确保各项健康指标已正确记录。建议保持规律饮食、均衡摄入蛋白质/碳水/脂肪，并持续记录每日摄入。");
-            return response;
+            return defaultAdviceResponse();
         }
+    }
+
+    /**
+     * 返回默认的 AI 建议兜底内容
+     */
+    private AiAdviceResponse defaultAdviceResponse() {
+        AiAdviceResponse response = new AiAdviceResponse();
+        response.setBrief("保持规律饮食");
+        response.setDetailed("目前无法生成个性化建议，请确保各项健康指标已正确记录。建议保持规律饮食、均衡摄入蛋白质/碳水/脂肪，并持续记录每日摄入。");
+        return response;
     }
 }
