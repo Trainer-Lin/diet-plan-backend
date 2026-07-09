@@ -30,6 +30,6 @@ springdoc:
     path: /v3/api-docs
 
 moonshot:
-  api-key: sk-jLD7Fm0dzn7yKzXCcnlfABUHluDhYEdZoP7qheYpHUT04u3P
+  api-key: ${MOONSHOT_API_KEY:your-moonshot-api-key-here}
   base-url: https://api.moonshot.cn/v1
   model: kimi-k2.5
