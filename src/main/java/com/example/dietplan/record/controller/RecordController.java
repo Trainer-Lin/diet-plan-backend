@@ -40,7 +40,7 @@ public class RecordController {
 
     @DeleteMapping("/item/{id}")
     public ApiResponse<Void> deleteRecordItem(@PathVariable Long id) {
-        recordService.deleteRecordItem(id);
+        recordService.deleteRecordItem(CurrentUserContext.getUserId(), id);
         return ApiResponse.success("删除成功", null);
     }
 }

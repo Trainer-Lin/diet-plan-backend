@@ -35,17 +35,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Claims claims = jwtTokenUtil.parseToken(token);
                 Long userId = Long.valueOf(claims.getSubject());
                 String username = claims.get("username", String.class);
+                String role = claims.get("role", String.class);
+                if (role == null) {
+                    role = "USER";
+                }
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userId,
                         null,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 request.setAttribute("currentUserId", userId);
                 request.setAttribute("currentUsername", username);
+                request.setAttribute("currentUserRole", role);
             } catch (Exception e) {
                 log.warn("JWT token 解析失败: {}", e.getMessage());
                 SecurityContextHolder.clearContext();

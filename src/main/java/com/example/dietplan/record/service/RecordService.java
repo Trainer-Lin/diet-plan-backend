@@ -10,5 +10,5 @@ public interface RecordService {
 
     void createRecord(Long userId, DietRecordCreateRequest request);
 
-    void deleteRecordItem(Long itemId);
+    void deleteRecordItem(Long userId, Long itemId);
 }

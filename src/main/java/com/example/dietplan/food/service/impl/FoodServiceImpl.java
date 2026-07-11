@@ -20,25 +20,31 @@ public class FoodServiceImpl implements FoodService {
     private final FoodMapper foodMapper;
 
     @Override
-    public List<FoodResponse> listFoods() {
-        return foodMapper.selectList(new LambdaQueryWrapper<Food>()
-                        .orderByDesc(Food::getCreatedAt))
+    public List<FoodResponse> listFoods(Long userId) {
+        LambdaQueryWrapper<Food> wrapper = new LambdaQueryWrapper<Food>()
+                .and(w -> w.eq(Food::getIsCustom, false)
+                        .or(w2 -> w2.eq(Food::getIsCustom, true).eq(Food::getCreatedBy, userId)))
+                .orderByDesc(Food::getCreatedAt);
+        return foodMapper.selectList(wrapper)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Override
-    public List<FoodResponse> searchFoods(String keyword) {
+    public List<FoodResponse> searchFoods(Long userId, String keyword) {
         if (!StringUtils.hasText(keyword)) {
-            return listFoods();
+            return listFoods(userId);
         }
 
-        return foodMapper.selectList(new LambdaQueryWrapper<Food>()
-                        .like(Food::getName, keyword)
+        LambdaQueryWrapper<Food> wrapper = new LambdaQueryWrapper<Food>()
+                .and(w -> w.eq(Food::getIsCustom, false)
+                        .or(w2 -> w2.eq(Food::getIsCustom, true).eq(Food::getCreatedBy, userId)))
+                .and(w -> w.like(Food::getName, keyword)
                         .or()
-                        .like(Food::getCategory, keyword)
-                        .orderByDesc(Food::getCreatedAt))
+                        .like(Food::getCategory, keyword))
+                .orderByDesc(Food::getCreatedAt);
+        return foodMapper.selectList(wrapper)
                 .stream()
                 .map(this::toResponse)
                 .toList();

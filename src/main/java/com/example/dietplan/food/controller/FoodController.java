@@ -24,12 +24,12 @@ public class FoodController {
 
     @GetMapping
     public ApiResponse<List<FoodResponse>> listFoods() {
-        return ApiResponse.success(foodService.listFoods());
+        return ApiResponse.success(foodService.listFoods(CurrentUserContext.getUserId()));
     }
 
     @GetMapping("/search")
     public ApiResponse<List<FoodResponse>> searchFoods(@RequestParam String keyword) {
-        return ApiResponse.success(foodService.searchFoods(keyword));
+        return ApiResponse.success(foodService.searchFoods(CurrentUserContext.getUserId(), keyword));
     }
 
     @PostMapping("/custom")

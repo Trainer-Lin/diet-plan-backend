@@ -5,9 +5,9 @@ import com.example.dietplan.food.dto.FoodResponse;
 import java.util.List;
 
 public interface FoodService {
-    List<FoodResponse> listFoods();
+    List<FoodResponse> listFoods(Long userId);
 
-    List<FoodResponse> searchFoods(String keyword);
+    List<FoodResponse> searchFoods(Long userId, String keyword);
 
     FoodResponse createCustomFood(Long userId, CustomFoodCreateRequest request);
 }

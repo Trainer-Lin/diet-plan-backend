@@ -18,7 +18,7 @@ public class JwtTokenUtil {
 
     private final JwtProperties jwtProperties;
 
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, String role) {
         Instant now = Instant.now();
         Instant expireAt = now.plus(jwtProperties.getExpireHours(), ChronoUnit.HOURS);
 
@@ -26,6 +26,7 @@ public class JwtTokenUtil {
                 .subject(String.valueOf(userId))
                 .issuer(jwtProperties.getIssuer())
                 .claim("username", username)
+                .claim("role", role)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expireAt))
                 .signWith(getSecretKey())

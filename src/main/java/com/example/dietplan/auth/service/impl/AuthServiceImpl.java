@@ -40,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setNickname(request.getNickname());
+        user.setRole("USER");
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         sysUserMapper.insert(user);
@@ -56,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "用户名或密码错误");
         }
 
-        String token = jwtTokenUtil.generateToken(user.getId(), user.getUsername());
+        String token = jwtTokenUtil.generateToken(user.getId(), user.getUsername(), user.getRole() != null ? user.getRole() : "USER");
         return new AuthTokenResponse(token, "Bearer");
     }
 
@@ -72,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .nickname(user.getNickname())
+                .role(user.getRole() != null ? user.getRole() : "USER")
                 .build();
     }
 }

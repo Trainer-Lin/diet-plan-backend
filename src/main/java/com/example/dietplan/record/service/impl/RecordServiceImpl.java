@@ -68,9 +68,14 @@ public class RecordServiceImpl implements RecordService {
     }
 
     @Override
-    public void deleteRecordItem(Long itemId) {
+    public void deleteRecordItem(Long userId, Long itemId) {
         DietRecordItem item = dietRecordItemMapper.selectById(itemId);
         if (item == null) {
+            return;
+        }
+
+        DietRecord record = dietRecordMapper.selectById(item.getRecordId());
+        if (record == null || !record.getUserId().equals(userId)) {
             return;
         }
 
