@@ -26,6 +26,7 @@ import com.example.dietplan.user.entity.SysUser;
 import com.example.dietplan.user.entity.UserProfile;
 import com.example.dietplan.user.mapper.SysUserMapper;
 import com.example.dietplan.user.mapper.UserProfileMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -123,7 +124,7 @@ public class AdminServiceImpl implements AdminService {
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户不存在");
         }
-        UserProfile profile = userProfileMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserProfile>()
+        UserProfile profile = userProfileMapper.selectOne(new LambdaQueryWrapper<UserProfile>()
                 .eq(UserProfile::getUserId, userId));
         if (profile == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户档案不存在");
@@ -151,7 +152,7 @@ public class AdminServiceImpl implements AdminService {
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户不存在");
         }
-        UserProfile profile = userProfileMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserProfile>()
+        UserProfile profile = userProfileMapper.selectOne(new LambdaQueryWrapper<UserProfile>()
                 .eq(UserProfile::getUserId, userId));
         if (profile == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户档案不存在");
@@ -174,7 +175,7 @@ public class AdminServiceImpl implements AdminService {
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户不存在");
         }
-        List<DietRecord> records = dietRecordMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DietRecord>()
+        List<DietRecord> records = dietRecordMapper.selectList(new LambdaQueryWrapper<DietRecord>()
                 .eq(DietRecord::getUserId, userId)
                 .orderByDesc(DietRecord::getRecordDate)
                 .orderByDesc(DietRecord::getCreatedAt));
@@ -182,7 +183,7 @@ public class AdminServiceImpl implements AdminService {
             return Collections.emptyList();
         }
         Set<Long> recordIds = records.stream().map(DietRecord::getId).collect(Collectors.toSet());
-        Map<Long, List<DietRecordItem>> itemMap = dietRecordItemMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DietRecordItem>()
+        Map<Long, List<DietRecordItem>> itemMap = dietRecordItemMapper.selectList(new LambdaQueryWrapper<DietRecordItem>()
                 .in(DietRecordItem::getRecordId, recordIds)).stream()
                 .collect(Collectors.groupingBy(DietRecordItem::getRecordId));
         return records.stream().map(record -> {
@@ -216,9 +217,9 @@ public class AdminServiceImpl implements AdminService {
         if (user == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "用户不存在");
         }
-        UserProfile profile = userProfileMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserProfile>()
+        UserProfile profile = userProfileMapper.selectOne(new LambdaQueryWrapper<UserProfile>()
                 .eq(UserProfile::getUserId, userId));
-        List<WeightRecord> records = weightRecordMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<WeightRecord>()
+        List<WeightRecord> records = weightRecordMapper.selectList(new LambdaQueryWrapper<WeightRecord>()
                 .eq(WeightRecord::getUserId, userId)
                 .orderByAsc(WeightRecord::getRecordDate));
         return records.stream().map(record -> {
@@ -299,8 +300,8 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public List<CustomFoodListResponse> listCustomFoods() {
         // 查询所有用户自定义食物
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Food> wrapper =
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Food> wrapper =
+                new LambdaQueryWrapper<>();
         wrapper.eq(Food::getIsCustom, true).orderByDesc(Food::getCreatedAt);
         List<Food> customFoods = foodMapper.selectList(wrapper);
 
@@ -341,7 +342,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<FoodResponse> listOfficialFoods() {
-        return foodMapper.selectList(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Food>()
+        return foodMapper.selectList(new LambdaQueryWrapper<Food>()
                         .eq(Food::getIsCustom, false)
                         .orderByDesc(Food::getCreatedAt))
                 .stream()
