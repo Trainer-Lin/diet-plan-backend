@@ -7,14 +7,20 @@ import com.example.dietplan.admin.dto.AdminUserProfileResponse;
 import com.example.dietplan.admin.dto.AdminUserUpdateRequest;
 import com.example.dietplan.admin.dto.AdminUserWeightRecordResponse;
 import com.example.dietplan.admin.dto.CustomFoodListResponse;
+import com.example.dietplan.admin.dto.FoodReviewActionRequest;
+import com.example.dietplan.admin.dto.FoodReviewTicketResponse;
 import com.example.dietplan.admin.dto.SystemStatsResponse;
 import com.example.dietplan.admin.mapper.AdminStatsMapper;
 import com.example.dietplan.admin.service.AdminService;
+import com.example.dietplan.common.context.CurrentUserContext;
 import com.example.dietplan.common.exception.BusinessException;
 import com.example.dietplan.common.result.ResultCode;
 import com.example.dietplan.food.dto.FoodResponse;
 import com.example.dietplan.food.entity.Food;
+import com.example.dietplan.food.entity.FoodReviewTicket;
+import com.example.dietplan.food.enums.FoodReviewStatus;
 import com.example.dietplan.food.mapper.FoodMapper;
+import com.example.dietplan.food.mapper.FoodReviewTicketMapper;
 import com.example.dietplan.record.entity.DietRecord;
 import com.example.dietplan.record.entity.DietRecordItem;
 import com.example.dietplan.record.entity.WeightRecord;
@@ -27,6 +33,7 @@ import com.example.dietplan.user.entity.UserProfile;
 import com.example.dietplan.user.mapper.SysUserMapper;
 import com.example.dietplan.user.mapper.UserProfileMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
@@ -46,6 +53,7 @@ public class AdminServiceImpl implements AdminService {
 
     private final SysUserMapper sysUserMapper;
     private final FoodMapper foodMapper;
+    private final FoodReviewTicketMapper foodReviewTicketMapper;
     private final AdminStatsMapper adminStatsMapper;
     private final UserProfileMapper userProfileMapper;
     private final DietRecordMapper dietRecordMapper;
@@ -54,7 +62,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<AdminUserListResponse> listUsers() {
-        return sysUserMapper.selectList(null).stream()
+        return sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getRole, "USER"))
+                .stream()
                 .map(this::toUserResponse)
                 .toList();
     }
@@ -290,10 +300,11 @@ public class AdminServiceImpl implements AdminService {
         if (food == null) {
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "食物不存在");
         }
-        DietRecordItem updateItem = new DietRecordItem();
-        updateItem.setFoodId(null);
-        dietRecordItemMapper.update(updateItem, new LambdaQueryWrapper<DietRecordItem>()
+        dietRecordItemMapper.update(null, new LambdaUpdateWrapper<DietRecordItem>()
+                .set(DietRecordItem::getFoodId, null)
                 .eq(DietRecordItem::getFoodId, foodId));
+        foodReviewTicketMapper.delete(new LambdaQueryWrapper<FoodReviewTicket>()
+                .eq(FoodReviewTicket::getFoodId, foodId));
         foodMapper.deleteById(foodId);
     }
 
@@ -359,6 +370,157 @@ public class AdminServiceImpl implements AdminService {
                 .totalRecords(adminStatsMapper.countRecords())
                 .totalWeightRecords(adminStatsMapper.countWeightRecords())
                 .topActiveUsers(adminStatsMapper.selectTopActiveUsers())
+                .build();
+    }
+
+    @Override
+    public List<FoodReviewTicketResponse> listFoodReviewTickets() {
+        List<FoodReviewTicket> tickets = foodReviewTicketMapper.selectList(
+                new LambdaQueryWrapper<FoodReviewTicket>()
+                        .orderByDesc(FoodReviewTicket::getCreatedAt));
+        if (tickets.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> foodIds = tickets.stream()
+                .map(FoodReviewTicket::getFoodId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> submitterIds = tickets.stream()
+                .map(FoodReviewTicket::getSubmitterId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> reviewerIds = tickets.stream()
+                .map(FoodReviewTicket::getReviewerId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, Food> foodMap = foodIds.isEmpty()
+                ? Collections.emptyMap()
+                : foodMapper.selectBatchIds(foodIds).stream()
+                        .collect(Collectors.toMap(Food::getId, f -> f));
+        Set<Long> allUserIds = new java.util.HashSet<>();
+        allUserIds.addAll(submitterIds);
+        allUserIds.addAll(reviewerIds);
+        Map<Long, SysUser> userMap = allUserIds.isEmpty()
+                ? Collections.emptyMap()
+                : sysUserMapper.selectBatchIds(allUserIds).stream()
+                        .collect(Collectors.toMap(SysUser::getId, u -> u));
+
+        return tickets.stream()
+                .map(ticket -> {
+                    Food food = foodMap.get(ticket.getFoodId());
+                    SysUser submitter = ticket.getSubmitterId() != null ? userMap.get(ticket.getSubmitterId()) : null;
+                    SysUser reviewer = ticket.getReviewerId() != null ? userMap.get(ticket.getReviewerId()) : null;
+                    return FoodReviewTicketResponse.builder()
+                            .id(ticket.getId())
+                            .foodId(ticket.getFoodId())
+                            .name(food != null ? food.getName() : "-")
+                            .category(food != null ? food.getCategory() : "-")
+                            .serving(food != null ? food.getServingSize() + " " + food.getServingUnit() : "-")
+                            .calories(food != null ? food.getCalories() : null)
+                            .protein(food != null ? food.getProtein() : null)
+                            .carbs(food != null ? food.getCarbs() : null)
+                            .fat(food != null ? food.getFat() : null)
+                            .submitterId(ticket.getSubmitterId())
+                            .submitterUsername(submitter != null ? submitter.getUsername() : "未知用户")
+                            .submitterNickname(submitter != null ? submitter.getNickname() : "-")
+                            .status(ticket.getStatus() != null ? ticket.getStatus().name() : null)
+                            .reviewerId(ticket.getReviewerId())
+                            .reviewerUsername(reviewer != null ? reviewer.getUsername() : null)
+                            .remark(ticket.getRemark())
+                            .reviewedAt(ticket.getReviewedAt())
+                            .createdAt(ticket.getCreatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FoodReviewTicketResponse approveFoodReview(Long ticketId) {
+        FoodReviewTicket ticket = foodReviewTicketMapper.selectById(ticketId);
+        if (ticket == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "审核工单不存在");
+        }
+        if (ticket.getStatus() != FoodReviewStatus.PENDING) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "工单不是待审核状态");
+        }
+
+        Food originalFood = foodMapper.selectById(ticket.getFoodId());
+        if (originalFood == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "关联食物不存在");
+        }
+
+        Food officialFood = new Food();
+        officialFood.setName(originalFood.getName());
+        officialFood.setCategory(originalFood.getCategory());
+        officialFood.setServingSize(originalFood.getServingSize());
+        officialFood.setServingUnit(originalFood.getServingUnit());
+        officialFood.setCalories(originalFood.getCalories());
+        officialFood.setProtein(originalFood.getProtein());
+        officialFood.setCarbs(originalFood.getCarbs());
+        officialFood.setFat(originalFood.getFat());
+        officialFood.setIsCustom(false);
+        officialFood.setCreatedBy(null);
+        officialFood.setCreatedAt(LocalDateTime.now());
+        foodMapper.insert(officialFood);
+
+        ticket.setStatus(FoodReviewStatus.APPROVED);
+        ticket.setReviewerId(CurrentUserContext.getUserId());
+        ticket.setReviewedAt(LocalDateTime.now());
+        foodReviewTicketMapper.updateById(ticket);
+
+        return toFoodReviewTicketResponse(ticket, officialFood);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public FoodReviewTicketResponse rejectFoodReview(Long ticketId, FoodReviewActionRequest request) {
+        FoodReviewTicket ticket = foodReviewTicketMapper.selectById(ticketId);
+        if (ticket == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "审核工单不存在");
+        }
+        if (ticket.getStatus() != FoodReviewStatus.PENDING) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "工单不是待审核状态");
+        }
+
+        ticket.setStatus(FoodReviewStatus.REJECTED);
+        ticket.setReviewerId(CurrentUserContext.getUserId());
+        ticket.setReviewedAt(LocalDateTime.now());
+        ticket.setRemark(request != null ? request.getRemark() : null);
+        foodReviewTicketMapper.updateById(ticket);
+
+        Food food = foodMapper.selectById(ticket.getFoodId());
+        return toFoodReviewTicketResponse(ticket, food);
+    }
+
+    private FoodReviewTicketResponse toFoodReviewTicketResponse(FoodReviewTicket ticket, Food food) {
+        SysUser submitter = ticket.getSubmitterId() != null
+                ? sysUserMapper.selectById(ticket.getSubmitterId())
+                : null;
+        SysUser reviewer = ticket.getReviewerId() != null
+                ? sysUserMapper.selectById(ticket.getReviewerId())
+                : null;
+        return FoodReviewTicketResponse.builder()
+                .id(ticket.getId())
+                .foodId(ticket.getFoodId())
+                .name(food != null ? food.getName() : "-")
+                .category(food != null ? food.getCategory() : "-")
+                .serving(food != null ? food.getServingSize() + " " + food.getServingUnit() : "-")
+                .calories(food != null ? food.getCalories() : null)
+                .protein(food != null ? food.getProtein() : null)
+                .carbs(food != null ? food.getCarbs() : null)
+                .fat(food != null ? food.getFat() : null)
+                .submitterId(ticket.getSubmitterId())
+                .submitterUsername(submitter != null ? submitter.getUsername() : "未知用户")
+                .submitterNickname(submitter != null ? submitter.getNickname() : "-")
+                .status(ticket.getStatus() != null ? ticket.getStatus().name() : null)
+                .reviewerId(ticket.getReviewerId())
+                .reviewerUsername(reviewer != null ? reviewer.getUsername() : null)
+                .remark(ticket.getRemark())
+                .reviewedAt(ticket.getReviewedAt())
+                .createdAt(ticket.getCreatedAt())
                 .build();
     }
 

@@ -4,7 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.example.dietplan.food.dto.CustomFoodCreateRequest;
 import com.example.dietplan.food.dto.FoodResponse;
 import com.example.dietplan.food.entity.Food;
+import com.example.dietplan.food.entity.FoodReviewTicket;
+import com.example.dietplan.food.enums.FoodReviewStatus;
 import com.example.dietplan.food.mapper.FoodMapper;
+import com.example.dietplan.food.mapper.FoodReviewTicketMapper;
 import com.example.dietplan.food.service.FoodService;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -18,6 +21,7 @@ import org.springframework.util.StringUtils;
 public class FoodServiceImpl implements FoodService {
 
     private final FoodMapper foodMapper;
+    private final FoodReviewTicketMapper foodReviewTicketMapper;
 
     @Override
     public List<FoodResponse> listFoods(Long userId) {
@@ -65,6 +69,14 @@ public class FoodServiceImpl implements FoodService {
         food.setCreatedBy(userId);
         food.setCreatedAt(LocalDateTime.now());
         foodMapper.insert(food);
+
+        FoodReviewTicket ticket = new FoodReviewTicket();
+        ticket.setFoodId(food.getId());
+        ticket.setSubmitterId(userId);
+        ticket.setStatus(FoodReviewStatus.PENDING);
+        ticket.setCreatedAt(LocalDateTime.now());
+        ticket.setUpdatedAt(LocalDateTime.now());
+        foodReviewTicketMapper.insert(ticket);
 
         return toResponse(food);
     }

@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 public class StatsServiceImpl implements StatsService {
 
     private static final DateTimeFormatter DAY_LABEL_FORMATTER = DateTimeFormatter.ofPattern("MM-dd");
+    private static final DateTimeFormatter DAY_OF_WEEK_FORMATTER = DateTimeFormatter.ofPattern("EEE", Locale.CHINESE);
 
     private final DietRecordMapper dietRecordMapper;
     private final DietRecordItemMapper dietRecordItemMapper;
@@ -120,9 +122,11 @@ public class StatsServiceImpl implements StatsService {
         List<DietRecord> weeklyRecords = loadRecordsBetween(userId, startDate, endDate);
         Map<LocalDate, Integer> caloriesByDate = new LinkedHashMap<>();
         List<String> statuses = new ArrayList<>();
+        List<String> days = new ArrayList<>();
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             caloriesByDate.put(date, 0);
+            days.add(date.format(DAY_OF_WEEK_FORMATTER));
         }
 
         weeklyRecords.forEach(record ->
@@ -138,6 +142,7 @@ public class StatsServiceImpl implements StatsService {
                 .completedDays((int) caloriesByDate.values().stream().filter(total -> total > 0).count())
                 .totalDays(7)
                 .statuses(statuses)
+                .days(days)
                 .build();
     }
 

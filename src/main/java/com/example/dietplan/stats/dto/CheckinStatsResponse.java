@@ -10,4 +10,5 @@ public class CheckinStatsResponse {
     private Integer completedDays;
     private Integer totalDays;
     private List<String> statuses;
+    private List<String> days;
 }

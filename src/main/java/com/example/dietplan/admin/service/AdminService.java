@@ -7,6 +7,8 @@ import com.example.dietplan.admin.dto.AdminUserProfileResponse;
 import com.example.dietplan.admin.dto.AdminUserUpdateRequest;
 import com.example.dietplan.admin.dto.AdminUserWeightRecordResponse;
 import com.example.dietplan.admin.dto.CustomFoodListResponse;
+import com.example.dietplan.admin.dto.FoodReviewActionRequest;
+import com.example.dietplan.admin.dto.FoodReviewTicketResponse;
 import com.example.dietplan.admin.dto.SystemStatsResponse;
 import com.example.dietplan.food.dto.FoodResponse;
 import com.example.dietplan.user.dto.UserProfileRequest;
@@ -39,4 +41,10 @@ public interface AdminService {
     List<CustomFoodListResponse> listCustomFoods();
 
     SystemStatsResponse getSystemStats();
+
+    List<FoodReviewTicketResponse> listFoodReviewTickets();
+
+    FoodReviewTicketResponse approveFoodReview(Long ticketId);
+
+    FoodReviewTicketResponse rejectFoodReview(Long ticketId, FoodReviewActionRequest request);
 }
