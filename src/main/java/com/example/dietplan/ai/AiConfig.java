@@ -30,9 +30,9 @@ public class AiConfig {
             @Value("${moonshot.base-url}") String baseUrl, // @Value 从配置文件读取值
             @Value("${moonshot.api-key}") String apiKey) {
 
-        // 配置底层 HTTP 客户端超时：响应设置为 55 秒，比前端超时略短，确保后端能先返回兜底响应
+        // 配置底层 HTTP 客户端超时：响应设置为 120 秒，周计划生成需要较长时间
         HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofSeconds(55));
+                .responseTimeout(Duration.ofSeconds(120));
 
         return WebClient.builder()
                 .baseUrl(baseUrl) // 设置基础 URL，后续请求只需要写路径

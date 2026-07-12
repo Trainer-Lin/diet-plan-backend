@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -98,6 +99,9 @@ public class AiService {
                 .uri("/chat/completions") // Kimi API 的聊天接口路径
                 .bodyValue(body) // 设置请求体
                 .retrieve() // 执行请求
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                        clientResponse -> Mono.error(new RuntimeException(
+                                "Kimi API 错误: " + clientResponse.statusCode())))
                 .bodyToMono(Map.class) // 将响应体解析为 Map
                 .block(); // 同步等待结果
 
@@ -110,8 +114,27 @@ public class AiService {
         // 2. 获取第一个 choice 的 message 对象
         Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
 
-        // 3. 返回 AI 的回复内容
-        return (String) message.get("content");
+        // 3. 返回 AI 的回复内容，并清理 markdown 代码块标记
+        return cleanJsonContent((String) message.get("content"));
+    }
+
+    /**
+     * 清理 Kimi 返回内容中可能包含的 markdown 代码块标记
+     */
+    private String cleanJsonContent(String content) {
+        if (content == null) {
+            return null;
+        }
+        String cleaned = content.trim();
+        if (cleaned.startsWith("```json")) {
+            cleaned = cleaned.substring("```json".length());
+        } else if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substring("```".length());
+        }
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.length() - "```".length());
+        }
+        return cleaned.trim();
     }
 
     /**
@@ -166,6 +189,172 @@ public class AiService {
             // 如果解析失败，返回默认建议
             return defaultAdviceResponse();
         }
+    }
+
+    /**
+     * 根据用户身体数据生成一周饮食与健身计划
+     */
+    public WeeklyPlanResponse generateWeeklyPlan(WeeklyPlanRequest request) {
+        String prompt = buildWeeklyPlanPrompt(request);
+
+        Map<String, Object> body = Map.of(
+                "model", "kimi-k2.5",
+                "messages", List.of(
+                        Map.of("role", "system", "content",
+                                "你是一个专业的营养师和健身教练。请根据用户提供的身体数据，生成一周（7天）的个性化饮食计划与健身计划。" +
+                                "必须严格按 JSON 格式输出，不要包含任何其他说明文字。JSON 格式为：" +
+                                "{\"summary\": \"总体概述50字以内\"," +
+                                "\"days\": [" +
+                                "  {\"dayOfWeek\": \"周一\", \"date\": \"07/14\"," +
+                                "   \"dietPlan\": {\"totalCalories\": 1800," +
+                                "     \"breakfast\": {\"name\": \"早餐名称\", \"description\": \"具体食物描述\", \"calories\": 400}," +
+                                "     \"lunch\": {\"name\": \"午餐名称\", \"description\": \"具体食物描述\", \"calories\": 600}," +
+                                "     \"dinner\": {\"name\": \"晚餐名称\", \"description\": \"具体食物描述\", \"calories\": 500}," +
+                                "     \"snacks\": [{\"name\": \"加餐名称\", \"description\": \"具体食物描述\", \"calories\": 300}]" +
+                                "   }," +
+                                "   \"fitnessPlan\": {\"estimatedCaloriesBurned\": 300," +
+                                "     \"warmUp\": \"热身动作描述\", \"mainWorkout\": \"主训练描述\", \"coolDown\": \"放松拉伸描述\", \"notes\": \"注意事项\"}" +
+                                "  }" +
+                                "]}"),
+                        Map.of("role", "user", "content", prompt)
+                ),
+                "response_format", Map.of("type", "json_object")
+        );
+
+        try {
+            String json = callKimi(body);
+            return objectMapper.readValue(json, WeeklyPlanResponse.class);
+        } catch (Exception e) {
+            log.error("调用 Kimi 周计划接口失败", e);
+            WeeklyPlanResponse fallback = defaultWeeklyPlanResponse();
+            fallback.setSummary("生成失败: " + e.getMessage());
+            return fallback;
+        }
+    }
+
+    /**
+     * 查询食物营养信息
+     */
+    public FoodNutritionResponse queryFoodNutrition(FoodNutritionRequest request) {
+        String prompt = String.format(
+                "请查询以下食物的营养信息（每100g或每份标准份量）：\n" +
+                        "食物：%s\n\n" +
+                        "请以 JSON 格式返回，字段如下：\n" +
+                        "name: 食物名称\n" +
+                        "calories: 热量(kcal)\n" +
+                        "protein: 蛋白质(g)\n" +
+                        "carbs: 碳水化合物(g)\n" +
+                        "fat: 脂肪(g)\n" +
+                        "servingSize: 参考份量数值\n" +
+                        "servingUnit: 参考份量单位（如：克、个、碗、杯）\n" +
+                        "note: 补充说明（如\"按每100g计算\"或\"按1个中等大小计算\"），不超过30字\n\n" +
+                        "如果食物名称不明确，请给出最常见的品类。所有数值保留一位小数。",
+                request.getFoodName()
+        );
+
+        Map<String, Object> body = Map.of(
+                "model", "kimi-k2.5",
+                "messages", List.of(
+                        Map.of("role", "system", "content",
+                                "你是一个专业的营养数据库。根据用户输入的食物名称，返回该食物的营养成分信息。" +
+                                "必须严格按 JSON 格式输出，不要包含任何其他说明文字。"),
+                        Map.of("role", "user", "content", prompt)
+                ),
+                "response_format", Map.of("type", "json_object")
+        );
+
+        try {
+            String json = callKimi(body);
+            return objectMapper.readValue(json, FoodNutritionResponse.class);
+        } catch (Exception e) {
+            log.error("查询食物营养信息失败", e);
+            FoodNutritionResponse fallback = new FoodNutritionResponse();
+            fallback.setName(request.getFoodName());
+            fallback.setNote("查询失败: " + e.getMessage());
+            return fallback;
+        }
+    }
+
+    private String buildWeeklyPlanPrompt(WeeklyPlanRequest request) {
+        // 计算下周一，生成 7 天精确日期
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate nextMonday = today.with(java.time.DayOfWeek.MONDAY);
+        if (!nextMonday.isAfter(today)) {
+            nextMonday = nextMonday.plusWeeks(1);
+        }
+        StringBuilder datesBuilder = new StringBuilder();
+        String[] weekDays = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        for (int i = 0; i < 7; i++) {
+            java.time.LocalDate d = nextMonday.plusDays(i);
+            String dateStr = String.format("%02d/%02d", d.getMonthValue(), d.getDayOfMonth());
+            datesBuilder.append(weekDays[i]).append(": ").append(dateStr);
+            if (i < 6) datesBuilder.append(", ");
+        }
+
+        return String.format(
+                "请根据以下用户身体数据，生成一周（7天，从周一到周日）的个性化饮食计划与健身计划：\n" +
+                        "当前体重：%s kg\n" +
+                        "目标体重：%s kg\n" +
+                        "每日目标热量：%s kcal/天\n" +
+                        "基础代谢(TDEE)：%s kcal\n" +
+                        "身高：%s cm\n" +
+                        "年龄：%s\n" +
+                        "性别：%s\n" +
+                        "活动水平：%s\n\n" +
+                        "本周日期对应关系（必须严格使用这些日期）：%s\n\n" +
+                        "要求：\n" +
+                        "1. 饮食计划要具体到每餐的食物名称和描述，热量合理分配\n" +
+                        "2. 健身计划要包含热身、主训练、放松拉伸的具体动作\n" +
+                        "3. 每天的热量缺口控制在300-500 kcal之间\n" +
+                        "4. 根据性别和活动水平调整运动强度\n" +
+                        "5. date 字段必须使用上面给出的日期，格式为 MM/DD",
+                request.getWeight() != null ? request.getWeight() : "未记录",
+                request.getTargetWeight() != null ? request.getTargetWeight() : "未设置",
+                request.getTargetCalories() != null ? request.getTargetCalories() : "未设置",
+                request.getTdee() != null ? request.getTdee() : "未记录",
+                request.getHeight() != null ? request.getHeight() : "未记录",
+                request.getAge() != null ? request.getAge() : "未记录",
+                request.getGender() != null ? request.getGender() : "未记录",
+                request.getActivityLevel() != null ? request.getActivityLevel() : "未记录",
+                datesBuilder.toString()
+        );
+    }
+
+    private WeeklyPlanResponse defaultWeeklyPlanResponse() {
+        WeeklyPlanResponse response = new WeeklyPlanResponse();
+        response.setSummary("AI 服务暂时不可用，请稍后重试。");
+
+        String[] weekDays = {"周一", "周二", "周三", "周四", "周五", "周六", "周日"};
+        java.util.List<WeeklyPlanResponse.DayPlan> days = new java.util.ArrayList<>();
+
+        for (String day : weekDays) {
+            WeeklyPlanResponse.DayPlan dp = new WeeklyPlanResponse.DayPlan();
+            dp.setDayOfWeek(day);
+            dp.setDate("--");
+
+            WeeklyPlanResponse.DietPlan diet = new WeeklyPlanResponse.DietPlan();
+            diet.setTotalCalories(0);
+            WeeklyPlanResponse.Meal emptyMeal = new WeeklyPlanResponse.Meal();
+            emptyMeal.setName("暂无数据");
+            emptyMeal.setDescription("AI 服务暂时不可用");
+            emptyMeal.setCalories(0);
+            diet.setBreakfast(emptyMeal);
+            diet.setLunch(emptyMeal);
+            diet.setDinner(emptyMeal);
+            dp.setDietPlan(diet);
+
+            WeeklyPlanResponse.FitnessPlan fitness = new WeeklyPlanResponse.FitnessPlan();
+            fitness.setEstimatedCaloriesBurned(0);
+            fitness.setWarmUp("暂无数据");
+            fitness.setMainWorkout("暂无数据");
+            fitness.setCoolDown("暂无数据");
+            fitness.setNotes("AI 服务暂时不可用");
+            dp.setFitnessPlan(fitness);
+
+            days.add(dp);
+        }
+        response.setDays(days);
+        return response;
     }
 
     /**

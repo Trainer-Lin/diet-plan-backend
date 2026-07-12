@@ -61,4 +61,30 @@ public class AiController {
         // 用统一的响应格式返回
         return ApiResponse.success(advice);
     }
+
+    /**
+     * AI 周计划生成接口
+     * <p>
+     * 前端 POST /api/ai/weekly-plan
+     * 请求体: 包含用户体重、身高、年龄、性别、活动水平等身体数据
+     * 响应体: {"code": 200, "data": {"summary": "概述", "days": [...]}, "message": "success"}
+     */
+    @PostMapping("/weekly-plan")
+    public ApiResponse<WeeklyPlanResponse> weeklyPlan(@Valid @RequestBody WeeklyPlanRequest request) {
+        WeeklyPlanResponse plan = aiService.generateWeeklyPlan(request);
+        return ApiResponse.success(plan);
+    }
+
+    /**
+     * AI 食物营养查询接口
+     * <p>
+     * 前端 POST /api/ai/food-nutrition
+     * 请求体: {"foodName": "一个鸡蛋"}
+     * 响应体: {"code": 200, "data": {"name": "鸡蛋", "calories": 144, "protein": 13.3, ...}, "message": "success"}
+     */
+    @PostMapping("/food-nutrition")
+    public ApiResponse<FoodNutritionResponse> foodNutrition(@Valid @RequestBody FoodNutritionRequest request) {
+        FoodNutritionResponse result = aiService.queryFoodNutrition(request);
+        return ApiResponse.success(result);
+    }
 }
